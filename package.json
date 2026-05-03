@@ -1,0 +1,20 @@
+{
+  "name": "uon-smart-academic-advisor",
+  "version": "1.0.0",
+  "description": "University of Nizwa AI Academic Advisor chatbot with KB, backend API, and feedback storage.",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.37.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
