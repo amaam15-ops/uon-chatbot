@@ -167,9 +167,6 @@ app.post('/api/chat', async (req, res) => {
 
 const data = await response.json();
 
-const answer = data.choices?.[0]?.message?.content 
-  || (lang === 'ar' ? 'ما قدرت أجاوب الآن' : 'Could not answer now');
-
     const answer = completion.content?.[0]?.text || (lang === 'ar' ? 'تعذر توليد إجابة الآن.' : 'Could not generate an answer now.');
     res.json({ mode: 'ai', answer, escalate });
   } catch (error) {
