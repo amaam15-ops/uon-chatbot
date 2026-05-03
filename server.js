@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
-import Anthropic from '@anthropic-ai/sdk';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -191,7 +190,7 @@ app.post('/api/feedback', async (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, ai: Boolean(anthropic) });
+  res.json({ ok: true, ai: Boolean(openrouterKey), provider: 'openrouter' });
 });
 
 app.listen(PORT, () => {
