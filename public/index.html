@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>المستشار الأكاديمي الذكي - جامعة نزوى</title>
+<title>المرشد الأكاديمي الذكي - جامعة نزوى</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <style>
   :root{--green:#1a5c38;--green-dark:#0f3d25;--green-light:#2d8a55;--gold:#c8a84b;--gold-light:#e8c96a;--bg:#0a1a10;--card:#111f15;--card2:#162418;--text:#e8f5ec;--text2:#8ab89a;--muted:#4a7a5a;--border:#2a4a32;}
@@ -44,7 +44,7 @@ async function send(){
 
   if(greet){
     rmT();
-    const reply='هلا وسهلا 👋 أنا المستشار الأكاديمي الذكي لجامعة نزوى. اسأليني عن المعدل، التسجيل، الإنذار الأكاديمي، الكليات، أو التخرج.';
+    const reply='هلا وسهلا 👋 أنا المرشد الأكاديمي الذكي لجامعة نزوى. اسأليني عن المعدل، التسجيل، الإنذار الأكاديمي، الكليات، أو التخرج.';
     addBot(reply,false,'kb','greeting');
     hist.push({role:'user',content:text},{role:'assistant',content:reply});
     document.getElementById('sbtn').disabled=false;
@@ -57,16 +57,20 @@ async function send(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({message:text,history:hist})
     });
-    const data=await res.json();
-    rmT();
-    if(!res.ok)throw new Error(data.error||'API error');
-    addBot(data.answer,data.escalate,data.mode,data.intent);
-    hist.push({role:'user',content:text},{role:'assistant',content:data.answer});
-    hist=hist.slice(-10);
-  }catch(err){
-    rmT();
-    addBot('صار خطأ في رد الذكاء الاصطناعي: '+err.message,false,'kb','error');
-  }
+
+    const textRes = await res.text();
+
+let data;
+try {
+  data = JSON.parse(textRes);
+} catch (e) {
+  throw new Error("Server response not JSON: " + textRes);
+}
+
+rmT();
+if (!res.ok) {
+  throw new Error(data.error || textRes);
+}
 
   document.getElementById('sbtn').disabled=false;
 }
