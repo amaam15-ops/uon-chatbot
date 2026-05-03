@@ -12,10 +12,7 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static('public'));
 
-const openrouterKey = process.env.OPENROUTER_API_KEY ||
-  null;
-
-
+const openrouterKey = process.env.OPENROUTER_API_KEY || null;
 
 const KB = [
   {
@@ -134,8 +131,7 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-   if (!openrouterKey) {
-      
+    if (!openrouterKey) {
       const fallback = kb
         ? kb[lang] || kb.en
         : lang === 'ar'
@@ -148,28 +144,45 @@ app.post('/api/chat', async (req, res) => {
       ? 'أنت المستشار الأكاديمي الذكي لجامعة نزوى. أجب بالعربية بأسلوب واضح ودافئ. اعتمد على المعلومات المؤسسية المعروفة، ولا تخترع أرقامًا أو سياسات غير مؤكدة. إذا كانت الحالة شخصية أو حساسة، وجّه الطالب لمركز الإرشاد.'
       : 'You are the AI Academic Advisor for the University of Nizwa. Be clear, concise, and avoid inventing institutional policies. Escalate personal or sensitive cases to the Academic Guidance Centre.';
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`
-  },
-  body: JSON.stringify({
-    model: 'mistralai/mistral-7b-instruct',
-    messages: [
-      { role: 'system', content: system },
-      ...history.filter(m => ['user','assistant'].includes(m.role)),
-      { role: 'user', content: message }
-    ]
-  })
-});
+    const safeHistory = history
+      .filter(m => ['user', 'assistant'].includes(m.role))
+      .map(m => ({
+        role: m.role,
+        content: String(m.content || '').slice(0, 1000)
+      }));
 
-const data = await response.json();
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openrouterKey}`,
+        'HTTP-Referer': 'https://uon-chatbot.onrender.com',
+        'X-Title': 'UoN Smart Academic Advisor'
+      },
+      body: JSON.stringify({
+        model: 'openrouter/free',
+        messages: [
+          { role: 'system', content: system },
+          ...safeHistory,
+          { role: 'user', content: message }
+        ]
+      })
+    });
 
-    const answer = completion.content?.[0]?.text || (lang === 'ar' ? 'تعذر توليد إجابة الآن.' : 'Could not generate an answer now.');
-    res.json({ mode: 'ai', answer, escalate });
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data?.error?.message || JSON.stringify(data)
+      });
+    }
+
+    const answer = data?.choices?.[0]?.message?.content
+      || (lang === 'ar' ? 'تعذر توليد إجابة الآن.' : 'Could not generate an answer now.');
+
+    return res.json({ mode: 'ai', intent: 'ai_general', answer, escalate });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Server error' });
+    return res.status(500).json({ error: error.message || 'Server error' });
   }
 });
 
