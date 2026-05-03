@@ -13,9 +13,10 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static('public'));
 
-const anthropic = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  : null;
+const openrouterKey = process.env.OPENROUTER_API_KEY ||
+  null;
+
+
 
 const KB = [
   {
@@ -134,7 +135,8 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-    if (!anthropic) {
+   if (!openrouterKey) {
+      
       const fallback = kb
         ? kb[lang] || kb.en
         : lang === 'ar'
@@ -147,15 +149,26 @@ app.post('/api/chat', async (req, res) => {
       ? 'أنت المستشار الأكاديمي الذكي لجامعة نزوى. أجب بالعربية بأسلوب واضح ودافئ. اعتمد على المعلومات المؤسسية المعروفة، ولا تخترع أرقامًا أو سياسات غير مؤكدة. إذا كانت الحالة شخصية أو حساسة، وجّه الطالب لمركز الإرشاد.'
       : 'You are the AI Academic Advisor for the University of Nizwa. Be clear, concise, and avoid inventing institutional policies. Escalate personal or sensitive cases to the Academic Guidance Centre.';
 
-    const completion = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-latest',
-      max_tokens: 500,
-      system,
-      messages: [
-        ...history.filter(m => ['user', 'assistant'].includes(m.role)).map(m => ({ role: m.role, content: String(m.content).slice(0, 1000) })),
-        { role: 'user', content: message }
-      ]
-    });
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`
+  },
+  body: JSON.stringify({
+    model: 'mistralai/mistral-7b-instruct',
+    messages: [
+      { role: 'system', content: system },
+      ...history.filter(m => ['user','assistant'].includes(m.role)),
+      { role: 'user', content: message }
+    ]
+  })
+});
+
+const data = await response.json();
+
+const answer = data.choices?.[0]?.message?.content 
+  || (lang === 'ar' ? 'ما قدرت أجاوب الآن' : 'Could not answer now');
 
     const answer = completion.content?.[0]?.text || (lang === 'ar' ? 'تعذر توليد إجابة الآن.' : 'Could not generate an answer now.');
     res.json({ mode: 'ai', answer, escalate });
