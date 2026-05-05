@@ -253,8 +253,8 @@ ${knowledge}
         'X-Title': 'UoN Smart Academic Advisor'
       },
       body: JSON.stringify({
-        model: 'openrouter/uo-n',
-        stream: true,
+model: 'qwen/qwen3-80b'
+  stream: true,
         messages: [
           { role: 'system', content: system },
           ...safeHistory,
