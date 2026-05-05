@@ -29,7 +29,49 @@ function detectLang(text) {
 }
 
 function normalize(text) {
-  return text.toLowerCase().replace(/[؟?.,!،؛:]/g, ' ').replace(/\s+/g, ' ').trim();
+  return text
+    .toLowerCase()
+    .replace(/[؟?.,!،؛:()\[\]{}"'“”]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getRelevantContext(question, text) {
+  const chunks = text
+    .split(/---|\n\s*\n/)
+    .map(c => c.trim())
+    .filter(c => c.length > 40);
+
+  const qWords = normalize(question)
+    .split(' ')
+    .filter(w => w.length > 2);
+
+  const scored = chunks.map(chunk => {
+    const cleanChunk = normalize(chunk);
+    let score = 0;
+
+    for (const word of qWords) {
+      if (cleanChunk.includes(word)) score += 2;
+    }
+
+    if (cleanChunk.includes('الملاحظة الأكاديمية') && normalize(question).includes('ملاحظة')) score += 5;
+    if (cleanChunk.includes('ساعة معتمدة') && normalize(question).includes('ساعة')) score += 5;
+    if ((cleanChunk.includes('12') || cleanChunk.includes('١٢')) && normalize(question).includes('ساعة')) score += 5;
+    if (cleanChunk.includes('الحضور') && normalize(question).includes('حضور')) score += 4;
+    if (cleanChunk.includes('الغياب') && normalize(question).includes('غياب')) score += 4;
+    if (cleanChunk.includes('الإرشاد الأكاديمي') && normalize(question).includes('إرشاد')) score += 4;
+
+    return { chunk, score };
+  });
+
+  const relevant = scored
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10)
+    .map(x => x.chunk)
+    .join('\n\n');
+
+  return relevant || text.slice(0, 6000);
 }
 
 function needsHuman(question) {
@@ -63,7 +105,9 @@ app.post('/api/chat', async (req, res) => {
 
     const lang = detectLang(message);
     const escalate = needsHuman(message);
-    const knowledge = await loadKnowledge();
+
+    const allKnowledge = await loadKnowledge();
+    const knowledge = getRelevantContext(message, allKnowledge);
 
     if (!openrouterKey) {
       return res.json({
@@ -88,17 +132,17 @@ app.post('/api/chat', async (req, res) => {
 - تجنب الرموز الغريبة أو التنسيق المبالغ فيه
 - لا تخلط العربية مع الإنجليزية إلا عند الضرورة
 
-اعتمد فقط على المعلومات الرسمية التالية من لوائح الجامعة.
+اعتمد فقط على المعلومات الرسمية المسترجعة من ملف المعرفة.
 لا تستخدم معرفتك العامة للإجابة عن السياسات الجامعية.
 لا تخترع أرقامًا أو شروطًا أو لوائح غير موجودة في النص.
 
-إذا كانت الإجابة موجودة في اللوائح، أجب منها مباشرة.
-إذا لم تكن الإجابة موجودة في اللوائح، قل:
+إذا كانت الإجابة موجودة في المعلومات المسترجعة، أجب منها مباشرة.
+إذا لم تكن الإجابة موجودة، قل:
 "لا تتوفر لدي معلومات دقيقة حول ذلك حاليًا."
 
 إذا كانت حالة الطالب شخصية أو حساسة، انصحه بمراجعة المرشد الأكاديمي أو مركز الإرشاد الأكاديمي.
 
-المعلومات الرسمية:
+المعلومات الرسمية المسترجعة:
 ${knowledge}
 `;
 
@@ -139,7 +183,7 @@ ${knowledge}
       || 'تعذر توليد إجابة الآن.';
 
     return res.json({
-      mode: 'ai_with_pdf',
+      mode: 'rag',
       intent: 'policy_knowledge',
       answer,
       escalate
