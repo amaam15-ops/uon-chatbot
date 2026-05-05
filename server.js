@@ -7,7 +7,7 @@ import path from 'path';
 const app = express();
 const PORT = process.env.PORT || 3000;
 const feedbackFile = path.resolve('feedback.json');
-const knowledgeFile = path.resolve('knowledge.txt');
+const knowledgeFile = path.resolve('rag_knowledge.txt');
 
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
