@@ -6,8 +6,8 @@ async function loadWebPage(url) {
   const res = await fetch(url);
   const buffer = Buffer.from(await res.arrayBuffer());
 
-  // مهم لموقع الجامعة
-  let html = iconv.decode(buffer, "windows-1256");
+  // ترميز عربي مناسب لموقع الجامعة
+  const html = iconv.decode(buffer, "windows-1256");
 
   const $ = cheerio.load(html);
   $("script, style, nav, footer").remove();
