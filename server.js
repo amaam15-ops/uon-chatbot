@@ -15,8 +15,12 @@ app.use(express.static('public'));
 
 const openrouterKey = process.env.OPENROUTER_API_KEY || null;
 
-// ✅ Cache للمعرفة بدل قراءة الملف كل رسالة
+// ✅ Cache المعرفة
 let cachedKnowledge = '';
+
+// ✅ Cache الـ Boost مع انتهاء صلاحية 5 دقايق
+let cachedBoost = null;
+let lastBoostUpdate = 0;
 
 async function loadKnowledge() {
   try {
@@ -41,28 +45,30 @@ function normalize(text) {
     .replace(/[ىي]/g, 'ي')
     .replace(/[ة]/g, 'ه')
     .replace(/[ؤئ]/g, 'ء')
-    .replace(/[؟?.,!،؛:()\[\]{}"'“”]/g, ' ')
+    .replace(/[؟?.,!،؛:()\[\]{}"'""]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-// 🔥 RL: تعلم من الفيدباك
+// 🔥 RL مع Cache - لا يقرأ الملف إلا كل 5 دقايق
 async function getKeywordBoost() {
+  const now = Date.now();
+  if (cachedBoost && (now - lastBoostUpdate) < 5 * 60 * 1000) {
+    return cachedBoost;
+  }
+
   try {
     const feedback = await readFeedback();
     const boost = {};
-
     feedback
       .filter(f => f.rating === 1)
       .forEach(f => {
-        const words = normalize(f.message || '').split(' ');
-        words.forEach(w => {
-          if (w.length > 2) {
-            boost[w] = (boost[w] || 0) + 2;
-          }
+        normalize(f.message || '').split(' ').forEach(w => {
+          if (w.length > 2) boost[w] = (boost[w] || 0) + 2;
         });
       });
-
+    cachedBoost = boost;
+    lastBoostUpdate = now;
     return boost;
   } catch {
     return {};
@@ -93,8 +99,8 @@ function expandQuery(question) {
   return Array.from(terms);
 }
 
-// 🔥 RAG + RL
-async function getRelevantContext(question, text) {
+// ✅ أصبحت sync - تستقبل boost من الخارج بدل ما تناديه بنفسها
+function getRelevantContext(question, text, boost = {}) {
   const chunks = text
     .split(/---|\n\s*\n/)
     .map(c => c.trim())
@@ -103,8 +109,6 @@ async function getRelevantContext(question, text) {
   const qWords = expandQuery(question);
   const normalizedQuestion = normalize(question);
 
-  const boost = await getKeywordBoost();
-
   const scored = chunks.map(chunk => {
     const cleanChunk = normalize(chunk);
     let score = 0;
@@ -112,10 +116,7 @@ async function getRelevantContext(question, text) {
     for (const word of qWords) {
       if (cleanChunk.includes(word)) {
         score += 2;
-
-        if (boost[word]) {
-          score += boost[word];
-        }
+        if (boost[word]) score += boost[word];
       }
     }
 
@@ -125,23 +126,23 @@ async function getRelevantContext(question, text) {
     return { chunk, score };
   });
 
-const relevant = scored
-  .filter(x => x.score > 0)
-  .sort((a, b) => b.score - a.score)
-  .slice(0, 3)
-  .map(x => x.chunk)
-  .join('\n\n');
+  const relevant = scored
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(x => x.chunk)
+    .join('\n\n');
 
-const cleanRelevant = relevant
-  .split('\n')
-  .filter(line => !/[\\$]/.test(line))
-  .filter(line => !line.includes('text{'))
-  .filter(line => !line.includes('big'))
-  .filter(line => !line.includes('frac'))
-  .filter(line => !line.includes('sum'))
-  .join('\n');
+  const cleanRelevant = relevant
+    .split('\n')
+    .filter(line => !/[\\$]/.test(line))
+    .filter(line => !line.includes('text{'))
+    .filter(line => !line.includes('big'))
+    .filter(line => !line.includes('frac'))
+    .filter(line => !line.includes('sum'))
+    .join('\n');
 
-return cleanRelevant || text.slice(0, 4000);
+  return cleanRelevant || text.slice(0, 4000);
 }
 
 function needsHuman(question) {
@@ -162,8 +163,11 @@ async function writeFeedback(entry) {
   const feedback = await readFeedback();
   feedback.push({ ...entry, createdAt: new Date().toISOString() });
   await fs.writeFile(feedbackFile, JSON.stringify(feedback, null, 2));
+  // ✅ أعد تعيين الـ cache بعد كل feedback جديد
+  cachedBoost = null;
 }
 
+// ✅ Streaming endpoint
 app.post('/api/chat', async (req, res) => {
   try {
     const message = String(req.body.message || '').trim();
@@ -176,8 +180,14 @@ app.post('/api/chat', async (req, res) => {
     const lang = detectLang(message);
     const escalate = needsHuman(message);
 
-    const allKnowledge = await loadKnowledge();
-    const knowledge = await getRelevantContext(message, allKnowledge);
+    // ✅ جلب المعرفة والـ boost بالتوازي
+    const [allKnowledge, boost] = await Promise.all([
+      loadKnowledge(),
+      getKeywordBoost()
+    ]);
+
+    // ✅ sync الآن - أسرع
+    const knowledge = getRelevantContext(message, allKnowledge, boost);
 
     if (!openrouterKey) {
       return res.json({
@@ -226,6 +236,14 @@ ${knowledge}
         content: String(m.content || '').slice(0, 1000)
       }));
 
+    // ✅ Streaming - المستخدم يشوف الجواب فوراً
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // أرسل metadata أول شيء
+    res.write(`data: ${JSON.stringify({ type: 'meta', escalate, mode: 'rag_rl' })}\n\n`);
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -236,6 +254,7 @@ ${knowledge}
       },
       body: JSON.stringify({
         model: 'openrouter/free',
+        stream: true,
         messages: [
           { role: 'system', content: system },
           ...safeHistory,
@@ -244,27 +263,50 @@ ${knowledge}
       })
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      return res.status(response.status).json({
-        error: data?.error?.message || JSON.stringify(data)
-      });
+      const err = await response.json();
+      res.write(`data: ${JSON.stringify({ type: 'error', error: err?.error?.message || 'Error' })}\n\n`);
+      return res.end();
     }
 
-    let answer = data?.choices?.[0]?.message?.content || 'تعذر توليد إجابة الآن.';
+    // ✅ مرر الـ stream مباشرة للعميل
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
 
-    // ✅ تم إيقاف retry مؤقتًا لتقليل البطء
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    return res.json({
-      mode: 'rag_rl',
-      intent: 'policy_knowledge',
-      answer,
-      escalate
-    });
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+
+      for (const line of lines) {
+        const data = line.replace('data: ', '');
+        if (data === '[DONE]') {
+          res.write('data: [DONE]\n\n');
+          break;
+        }
+        try {
+          const parsed = JSON.parse(data);
+          const text = parsed.choices?.[0]?.delta?.content || '';
+          if (text) {
+            res.write(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`);
+          }
+        } catch {
+          // تجاهل chunks غير صالحة
+        }
+      }
+    }
+
+    res.end();
 
   } catch (error) {
-    return res.status(500).json({ error: error.message || 'Server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message || 'Server error' });
+    } else {
+      res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
+      res.end();
+    }
   }
 });
 
