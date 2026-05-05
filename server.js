@@ -132,7 +132,7 @@ async function getRelevantContext(question, text) {
     .map(x => x.chunk)
     .join('\n\n');
 
-  return relevant || text.slice(0, 8000);
+  return relevant || text.slice(0, 4000);
 }
 
 function needsHuman(question) {
