@@ -15,9 +15,15 @@ app.use(express.static('public'));
 
 const openrouterKey = process.env.OPENROUTER_API_KEY || null;
 
+// ✅ Cache للمعرفة بدل قراءة الملف كل رسالة
+let cachedKnowledge = '';
+
 async function loadKnowledge() {
   try {
-    return await fs.readFile(knowledgeFile, 'utf8');
+    if (!cachedKnowledge) {
+      cachedKnowledge = await fs.readFile(knowledgeFile, 'utf8');
+    }
+    return cachedKnowledge;
   } catch {
     return '';
   }
@@ -108,7 +114,7 @@ async function getRelevantContext(question, text) {
         score += 2;
 
         if (boost[word]) {
-          score += boost[word]; // 🔥 RL
+          score += boost[word];
         }
       }
     }
@@ -122,7 +128,7 @@ async function getRelevantContext(question, text) {
   const relevant = scored
     .filter(x => x.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 12)
+    .slice(0, 5) // ✅ كان 12
     .map(x => x.chunk)
     .join('\n\n');
 
@@ -174,7 +180,7 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
-  const system = `
+    const system = `
 أنت مستشار أكاديمي ذكي لجامعة نزوى.
 
 أجب بنفس لغة سؤال الطالب فقط وبشكل صارم:
@@ -239,36 +245,7 @@ ${knowledge}
 
     let answer = data?.choices?.[0]?.message?.content || 'تعذر توليد إجابة الآن.';
 
-    // 🔥 RL إعادة محاولة
-    const feedback = await readFeedback();
-
-    const negativeCount = feedback.filter(f =>
-      f.rating === -1 &&
-      normalize(f.message).includes(normalize(message))
-    ).length;
-
-    if (negativeCount >= 2) {
-      const retryResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openrouterKey}`
-        },
-        body: JSON.stringify({
-          model: 'openrouter/free',
-          messages: [
-            {
-              role: 'system',
-              content: system + "\nحاول الإجابة بطريقة أوضح وبأسلوب مختلف."
-            },
-            { role: 'user', content: message }
-          ]
-        })
-      });
-
-      const retryData = await retryResponse.json();
-      answer = retryData?.choices?.[0]?.message?.content || answer;
-    }
+    // ✅ تم إيقاف retry مؤقتًا لتقليل البطء
 
     return res.json({
       mode: 'rag_rl',
