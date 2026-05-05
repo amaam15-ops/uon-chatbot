@@ -253,7 +253,7 @@ ${knowledge}
         'X-Title': 'UoN Smart Academic Advisor'
       },
       body: JSON.stringify({
-model: 'qwen/qwen3-80b'
+model: 'qwen/qwen3-8b:free'
   stream: true,
         messages: [
           { role: 'system', content: system },
