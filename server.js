@@ -31,9 +31,37 @@ function detectLang(text) {
 function normalize(text) {
   return text
     .toLowerCase()
+    .replace(/[إأآا]/g, 'ا')
+    .replace(/[ىي]/g, 'ي')
+    .replace(/[ة]/g, 'ه')
+    .replace(/[ؤئ]/g, 'ء')
     .replace(/[؟?.,!،؛:()\[\]{}"'“”]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function expandQuery(question) {
+  const q = normalize(question);
+  const terms = new Set(q.split(' ').filter(w => w.length > 2));
+
+  const groups = [
+    ['college', 'colleges', 'كليه', 'كليات'],
+    ['program', 'programs', 'برنامج', 'برامج', 'تخصص', 'تخصصات'],
+    ['fee', 'fees', 'price', 'cost', 'tuition', 'رسوم', 'تكلفه', 'سعر', 'اسعار'],
+    ['credit', 'credits', 'hour', 'hours', 'ساعه', 'ساعات', 'معتمده'],
+    ['calendar', 'event', 'events', 'activity', 'activities', 'تقويم', 'فعاليه', 'فعاليات', 'انشطه'],
+    ['probation', 'warning', 'ملاحظه', 'انذار'],
+    ['attendance', 'absence', 'حضور', 'غياب'],
+    ['advisor', 'advising', 'guidance', 'ارشاد', 'مرشد']
+  ];
+
+  for (const group of groups) {
+    if (group.some(t => q.includes(t))) {
+      group.forEach(t => terms.add(normalize(t)));
+    }
+  }
+
+  return Array.from(terms);
 }
 
 function getRelevantContext(question, text) {
@@ -42,9 +70,8 @@ function getRelevantContext(question, text) {
     .map(c => c.trim())
     .filter(c => c.length > 40);
 
-  const qWords = normalize(question)
-    .split(' ')
-    .filter(w => w.length > 2);
+  const qWords = expandQuery(question);
+  const normalizedQuestion = normalize(question);
 
   const scored = chunks.map(chunk => {
     const cleanChunk = normalize(chunk);
@@ -54,12 +81,16 @@ function getRelevantContext(question, text) {
       if (cleanChunk.includes(word)) score += 2;
     }
 
-    if (cleanChunk.includes('الملاحظة الأكاديمية') && normalize(question).includes('ملاحظة')) score += 5;
-    if (cleanChunk.includes('ساعة معتمدة') && normalize(question).includes('ساعة')) score += 5;
-    if ((cleanChunk.includes('12') || cleanChunk.includes('١٢')) && normalize(question).includes('ساعة')) score += 5;
-    if (cleanChunk.includes('الحضور') && normalize(question).includes('حضور')) score += 4;
-    if (cleanChunk.includes('الغياب') && normalize(question).includes('غياب')) score += 4;
-    if (cleanChunk.includes('الإرشاد الأكاديمي') && normalize(question).includes('إرشاد')) score += 4;
+    if (cleanChunk.includes('كليه') && (normalizedQuestion.includes('college') || normalizedQuestion.includes('كليه') || normalizedQuestion.includes('كليات'))) score += 8;
+    if (cleanChunk.includes('برنامج') && (normalizedQuestion.includes('program') || normalizedQuestion.includes('تخصص') || normalizedQuestion.includes('برامج'))) score += 8;
+    if ((cleanChunk.includes('رسوم') || cleanChunk.includes('سعر')) && (normalizedQuestion.includes('fee') || normalizedQuestion.includes('price') || normalizedQuestion.includes('رسوم'))) score += 8;
+    if (cleanChunk.includes('ساعه') && (normalizedQuestion.includes('hour') || normalizedQuestion.includes('credit') || normalizedQuestion.includes('ساعه'))) score += 8;
+    if (cleanChunk.includes('تقويم') || cleanChunk.includes('فعاليه') || cleanChunk.includes('انشطه')) score += 6;
+    if (cleanChunk.includes('الملاحظه الاكاديميه') && normalizedQuestion.includes('ملاحظه')) score += 6;
+    if (cleanChunk.includes('12') || cleanChunk.includes('١٢')) score += normalizedQuestion.includes('ساعه') ? 6 : 0;
+    if (cleanChunk.includes('الحضور') && normalizedQuestion.includes('حضور')) score += 5;
+    if (cleanChunk.includes('الغياب') && normalizedQuestion.includes('غياب')) score += 5;
+    if (cleanChunk.includes('الارشاد الاكاديمي') && normalizedQuestion.includes('ارشاد')) score += 5;
 
     return { chunk, score };
   });
@@ -67,11 +98,11 @@ function getRelevantContext(question, text) {
   const relevant = scored
     .filter(x => x.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
+    .slice(0, 12)
     .map(x => x.chunk)
     .join('\n\n');
 
-  return relevant || text.slice(0, 6000);
+  return relevant || text.slice(0, 8000);
 }
 
 function needsHuman(question) {
@@ -125,17 +156,23 @@ app.post('/api/chat', async (req, res) => {
 أجب بنفس لغة سؤال الطالب:
 - إذا كان السؤال بالعربية، أجب بالعربية الفصحى المبسطة.
 - إذا كان السؤال بالإنجليزية، أجب بالإنجليزية الواضحة.
+- لا تخلط بين اللغتين إلا عند الضرورة.
+
 أجب بشكل مباشر ومختصر بدون مقدمات طويلة.
 إذا كان السؤال بسيطًا، قدم إجابة قصيرة وواضحة.
 
 عند عرض المعلومات:
-- استخدم نقاط بسيطة ومنظمة
-- تجنب الرموز الغريبة أو التنسيق المبالغ فيه
-- لا تخلط العربية مع الإنجليزية إلا عند الضرورة
+- استخدم نقاط بسيطة ومنظمة.
+- تجنب الرموز الغريبة أو التنسيق المبالغ فيه.
+- لا تخترع أرقامًا أو شروطًا أو لوائح غير موجودة في النص.
 
-اعتمد فقط على المعلومات الرسمية المسترجعة من ملف المعرفة.
-لا تستخدم معرفتك العامة للإجابة عن السياسات الجامعية.
-لا تخترع أرقامًا أو شروطًا أو لوائح غير موجودة في النص.
+اعتمد أولًا على المعلومات الرسمية المسترجعة من ملف المعرفة.
+هذه المعلومات قد تكون من:
+- ملفات PDF للسياسات واللوائح.
+- صفحات الويب الرسمية لجامعة نزوى.
+
+إذا سألك الطالب عن مصدر إجابتك، قل:
+"إجابتي مبنية على ملفات اللوائح الجامعية وصفحات الويب الرسمية التي تم ربطها بالنظام."
 
 إذا كانت الإجابة موجودة في المعلومات المسترجعة، أجب منها مباشرة.
 إذا لم تكن الإجابة موجودة، قل:
