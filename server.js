@@ -244,32 +244,24 @@ ${knowledge}
     // أرسل metadata أول شيء
     res.write(`data: ${JSON.stringify({ type: 'meta', escalate, mode: 'rag_rl' })}\n\n`);
 
-  async function callModel(modelName) {
-  return fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${openrouterKey}`,
-      'HTTP-Referer': 'https://uon-chatbot.onrender.com',
-      'X-Title': 'UoN Smart Academic Advisor'
-    },
-    body: JSON.stringify({
-      model: modelName,
-      stream: true,
-      messages: [
-        { role: 'system', content: system },
-        ...safeHistory,
-        { role: 'user', content: message }
-      ]
-    })
-  });
-}
-
-let response = await callModel('qwen/qwen3-next-80b-a3b-instruct:free');
-
-if (!response.ok) {
-  response = await callModel('google/gemini-2.0-flash-exp:free');
-}
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openrouterKey}`,
+        'HTTP-Referer': 'https://uon-chatbot.onrender.com',
+        'X-Title': 'UoN Smart Academic Advisor'
+      },
+ body: JSON.stringify({
+model: 'qwen/qwen3-next-80b-a3b-instruct:free',
+   stream: true,
+    messages: [
+    { role: 'system', content: system },
+    ...safeHistory,
+    { role: 'user', content: message }
+  ]
+})
+    });
 
     if (!response.ok) {
       const err = await response.json();
