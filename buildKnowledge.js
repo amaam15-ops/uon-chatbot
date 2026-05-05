@@ -26,10 +26,14 @@ async function buildKnowledge() {
     knowledge += fs.readFileSync("knowledge.txt", "utf8");
   }
 
-  const webPages = [
-    "https://www.unizwa.edu.om/program_details.php?college=2&comingfrom=761&lang=ar",
-    "https://www.unizwa.edu.om/index.php"
-  ];
+ const webPages = [
+  "https://www.unizwa.edu.om/program_details.php?college=1&comingfrom=761&lang=ar",
+  "https://www.unizwa.edu.om/program_details.php?college=2&comingfrom=761&lang=ar",
+  "https://www.unizwa.edu.om/program_details.php?college=3&comingfrom=761&lang=ar",
+  "https://www.unizwa.edu.om/program_details.php?college=4&comingfrom=761&lang=ar",
+  "https://www.unizwa.edu.om/index.php"
+];
+ 
 
   for (const url of webPages) {
     try {
