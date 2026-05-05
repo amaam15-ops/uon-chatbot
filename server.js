@@ -125,14 +125,23 @@ async function getRelevantContext(question, text) {
     return { chunk, score };
   });
 
-  const relevant = scored
-    .filter(x => x.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5) // ✅ كان 12
-    .map(x => x.chunk)
-    .join('\n\n');
+const relevant = scored
+  .filter(x => x.score > 0)
+  .sort((a, b) => b.score - a.score)
+  .slice(0, 3)
+  .map(x => x.chunk)
+  .join('\n\n');
 
-  return relevant || text.slice(0, 4000);
+const cleanRelevant = relevant
+  .split('\n')
+  .filter(line => !/[\\$]/.test(line))
+  .filter(line => !line.includes('text{'))
+  .filter(line => !line.includes('big'))
+  .filter(line => !line.includes('frac'))
+  .filter(line => !line.includes('sum'))
+  .join('\n');
+
+return cleanRelevant || text.slice(0, 4000);
 }
 
 function needsHuman(question) {
