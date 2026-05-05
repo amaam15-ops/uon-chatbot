@@ -1,9 +1,13 @@
 const fs = require("fs");
 const cheerio = require("cheerio");
+const iconv = require("iconv-lite");
 
 async function loadWebPage(url) {
   const res = await fetch(url);
-  const html = await res.text();
+  const buffer = Buffer.from(await res.arrayBuffer());
+
+  // مهم لموقع الجامعة
+  let html = iconv.decode(buffer, "windows-1256");
 
   const $ = cheerio.load(html);
   $("script, style, nav, footer").remove();
@@ -18,18 +22,27 @@ async function loadWebPage(url) {
 async function buildKnowledge() {
   let knowledge = "";
 
-  // اقرأ ملف PDF 
   if (fs.existsSync("knowledge.txt")) {
     knowledge += fs.readFileSync("knowledge.txt", "utf8");
   }
 
-  // اقرأ صفحة ويب
-  const url = "https://www.unizwa.edu.om";
-  const webText = await loadWebPage(url);
-  knowledge += webText;
+  const webPages = [
+    "https://www.unizwa.edu.om/program_details.php?college=2&comingfrom=761&lang=ar",
+    "https://www.unizwa.edu.om/index.php"
+  ];
+
+  for (const url of webPages) {
+    try {
+      console.log("🌐 قراءة:", url);
+      const webText = await loadWebPage(url);
+      knowledge += webText;
+    } catch (err) {
+      console.log("❌ فشل قراءة:", url);
+      console.log(err.message);
+    }
+  }
 
   fs.writeFileSync("rag_knowledge.txt", knowledge, "utf8");
-
   console.log("✅ تم إنشاء rag_knowledge.txt");
 }
 
