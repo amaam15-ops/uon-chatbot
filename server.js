@@ -252,15 +252,15 @@ ${knowledge}
         'HTTP-Referer': 'https://uon-chatbot.onrender.com',
         'X-Title': 'UoN Smart Academic Advisor'
       },
-      body: JSON.stringify({
-model: 'qwen/qwen3-8b:free',
+ body: JSON.stringify({
+  model: 'qwen/qwen3-8b:free',
   stream: true,
-        messages: [
-          { role: 'system', content: system },
-          ...safeHistory,
-          { role: 'user', content: message }
-        ]
-      })
+  messages: [
+    { role: 'system', content: system },
+    ...safeHistory,
+    { role: 'user', content: message }
+  ]
+})
     });
 
     if (!response.ok) {
