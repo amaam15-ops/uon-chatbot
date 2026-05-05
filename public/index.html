@@ -155,12 +155,15 @@ async function send(){
               if(bubbleId===null) bubbleId=createBotBubble('rag_rl');
               fullText+=parsed.text;
               appendText(bubbleId, parsed.text);
-            } else if(parsed.type==='error'){
-              throw new Error(parsed.error||'Stream error');
             }
-          }catch(e){
-            // تجاهل JSON غير صالح
-          }
+            else if(parsed.type==='error'){
+  if(bubbleId===null) bubbleId=createBotBubble('rag_rl');
+  appendText(bubbleId, '❌ خطأ: ' + (parsed.error || 'Stream error'));
+  fullText = '❌ خطأ: ' + (parsed.error || 'Stream error');
+}
+}catch(e){
+  // تجاهل JSON غير صالح
+}
         }
       }
 
