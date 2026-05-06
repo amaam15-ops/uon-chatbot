@@ -259,7 +259,7 @@ ${knowledge}
     res.setHeader('Connection', 'keep-alive');
 
     // أرسل metadata أول شيء
-    res.write(`data: ${JSON.stringify({ type: 'meta', escalate, mode: 'rag_rl' })}\n\n`);
+   res.write(`data: ${JSON.stringify({ type: 'meta', escalate, mode: escalate ? 'human' : 'rag_rl' })}\n\n`);
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
