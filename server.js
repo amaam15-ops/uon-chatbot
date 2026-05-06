@@ -142,7 +142,7 @@ function getRelevantContext(question, text, boost = {}) {
     .filter(line => !line.includes('sum'))
     .join('\n');
 
-  return cleanRelevant || text.slice(0, 4000);
+  return cleanRelevant || '';
 }
 
 function needsHuman(question) {
