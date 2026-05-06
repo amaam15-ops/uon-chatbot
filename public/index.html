@@ -30,11 +30,13 @@ function gt(){return new Date().toLocaleTimeString('ar',{hour:'2-digit',minute:'
 function escH(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function fmt(t){
   return escH(t)
-    .replace(/###/g,'<br><br><strong>')
-    .replace(/ - /g,'<br>• ')
-    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\n{2,}/g,'<br><br>')
-    .replace(/\n/g,'<br>');
+    .replace(/\s*---\s*/g, '<br><br>')
+    .replace(/\s*###\s*/g, '<br><br>')
+    .replace(/\s*(المادة\s*\d+)/g, '<br><br><strong>$1</strong><br>')
+    .replace(/\s*•\s*/g, '<br>• ')
+    .replace(/\s*-\s*/g, '<br>• ')
+    .replace(/\n{2,}/g, '<br><br>')
+    .replace(/\n/g, '<br>');
 }
 function addUser(t){const c=document.getElementById('msgs'),d=document.createElement('div');d.className='row user';d.innerHTML=`<div class="av user">👤</div><div><div class="bubble user">${escH(t)}</div><div class="btime">${gt()}</div></div>`;c.appendChild(d);sc();}
 
