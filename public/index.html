@@ -20,9 +20,8 @@
 <button class="qbtn" onclick="ask('ما هي الكليات والبرامج في جامعة نزوى؟')">🏛️ الكليات والبرامج</button>
 <button class="qbtn" onclick="ask('ما هي قواعد التسجيل في الجامعة وعدد الساعات المسموح بها؟')">📋 قواعد التسجيل</button>
 <button class="qbtn" onclick="ask('كيف أتواصل مع مركز الإرشاد الأكاديمي؟')">📞 مركز الإرشاد</button>
-<button class="qbtn" onclick="ask('What programs does UoN offer?')">🇬🇧 English</button>
 </div></div>
-<div id="msgs"><div class="welcome"><div class="ic">🏛️</div><h2>أهلاً وسهلاً بك في المستشار الأكاديمي الذكي</h2><p>أنا هنا لمساعدتك في استفسارات جامعة نزوى.<br>يمكنك السؤال بالعربية أو الإنجليزية.</p><div class="pills"><span class="pill">🔬 العلوم والآداب</span><span class="pill">💼 الاقتصاد ونظم المعلومات</span><span class="pill">⚙️ الهندسة والعمارة</span><span class="pill">💊 الصيدلة والتمريض</span></div></div></div>
+<div id="msgs"><div class="welcome"><div class="ic">🏛️</div><h2>أهلاً وسهلاً بك في المستشار الأكاديمي الذكي</h2><p>أنا هنا لمساعدتك في استفسارات جامعة نزوى.<br>يمكنك السؤال بالعربية أو الإنجليزية.</p><div class="pills"><span class="pill">🔬 العلوم والآداب</span><span class="pill">💼 الاقتصاد ونظم المعلومات</span><span class="pill">⚙️ الهندسة والعمارة</span><span class="pill">💊العلوم الصحية</span></div></div></div>
 <div class="iarea"><textarea id="inp" rows="1" placeholder="اكتب سؤالك هنا..." onkeydown="hk(event)" oninput="rsz(this)"></textarea><button id="sbtn" onclick="send()">➤</button></div>
 <script>
 let hist=[],mc=0,lastMessage='',lastAnswer='',lastIntent='',lastMode='';
@@ -58,7 +57,7 @@ function createBotBubble(mode){
   d.id=`msg-${id}`;
   const tag=mode==='ai'
     ?`<div class="mtag mai">🤖 ذكاء اصطناعي</div><br>`
-    :`<div class="mtag mkb">📚 قاعدة المعرفة</div><br>`;
+    :`<div class="mtag mkb">🤖 مساعد أكاديمي</div><br>`;
   d.innerHTML=`<div class="av bot">🤖</div><div style="max-width:75%"><div class="bubble bot" id="bubble-${id}">${tag}<span id="text-${id}"></span><span class="cursor" id="cursor-${id}"></span></div><div class="btime">${gt()}</div></div>`;
   c.appendChild(d);
   sc();
