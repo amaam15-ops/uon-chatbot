@@ -147,9 +147,18 @@ function getRelevantContext(question, text, boost = {}) {
 
 function needsHuman(question) {
   const q = normalize(question);
-  return ['شخصي','personal','appeal','استئناف','مرض','ظروف','شكوى','خايف','قلق','اكتئاب','طرد','فصل'].some(k => q.includes(k));
-}
 
+  return [
+    'شخصي', 'personal',
+    'appeal', 'استئناف',
+    'مرض', 'مرضيه', 'إجازة مرضية', 'اجازه مرضيه',
+    'ظروف', 'شكوى', 'مشاكل',
+    'خايف', 'قلق', 'اكتئاب',
+    'نفسي', 'نفسية', 'نفسيه', 'حالة نفسية', 'حاله نفسيه',
+    'إرهاق', 'ارهاق', 'تعب', 'ضغط', 'توتر',
+    'طرد', 'فصل', 'رسوب', 'انسحاب'
+  ].some(k => q.includes(normalize(k)));
+}
 async function readFeedback() {
   try {
     const data = await fs.readFile(feedbackFile, 'utf8');
