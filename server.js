@@ -129,7 +129,7 @@ function getRelevantContext(question, text, boost = {}) {
   const relevant = scored
     .filter(x => x.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
+    .slice(0, 5)
     .map(x => x.chunk)
     .join('\n\n');
 
