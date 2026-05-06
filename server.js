@@ -253,7 +253,7 @@ ${knowledge}
         'X-Title': 'UoN Smart Academic Advisor'
       },
  body: JSON.stringify({
-model: 'qwen/qwen3-next-80b-a3b-instruct:free',
+model: '@preset/uo-n',
    stream: true,
     messages: [
     { role: 'system', content: system },
@@ -263,11 +263,18 @@ model: 'qwen/qwen3-next-80b-a3b-instruct:free',
 })
     });
 
-    if (!response.ok) {
-      const err = await response.json();
-      res.write(`data: ${JSON.stringify({ type: 'error', error: err?.error?.message || 'Error' })}\n\n`);
-      return res.end();
-    }
+if (!response.ok) {
+  let errorMessage = 'الخدمة مشغولة حاليًا، حاول مرة أخرى 🙏';
+
+  try {
+    const errText = await response.text();
+    const err = JSON.parse(errText);
+    errorMessage = err?.error?.message || errorMessage;
+  } catch {}
+
+  res.write(`data: ${JSON.stringify({ type: 'error', error: errorMessage })}\n\n`);
+  return res.end();
+}
 
     // ✅ مرر الـ stream مباشرة للعميل
     const reader = response.body.getReader();
