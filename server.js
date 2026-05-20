@@ -304,21 +304,18 @@ model: '@preset/uo-n',
 })
     });
 
-if (!response.ok) {
   // ⚡ Fallback: نرجع المعرفة مباشرة بدل الخطأ
-  const fallbackAnswer = knowledge
-    ? `أهلاً بك! 🌟 إليك المعلومات المتوفرة من قاعدة بيانات الجامعة:\n\n${knowledge.slice(0, 1500)}\n\nإذا احتجت توضيح أكثر، تواصل مع مركز الإرشاد الأكاديمي: 📞 +968 25 446234`
-    : (lang === 'ar'
-        ? 'عذرًا، الخدمة مشغولة حاليًا. يمكنك التواصل مع مركز الإرشاد الأكاديمي: 📞 +968 25 446234'
-        : 'Sorry, service is busy. Please contact academic advising: 📞 +968 25 446234');
+  if (!response.ok) {
+  let errorMessage = 'عذرًا، الخدمة مشغولة حاليًا. حاول بعد لحظات 🙏';
 
-  // أرسلها كـ streaming chunks
-  const chunks = fallbackAnswer.match(/.{1,50}/g) || [fallbackAnswer];
-  for (const chunk of chunks) {
-    res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
-    await new Promise(r => setTimeout(r, 20));
-  }
-  res.write('data: [DONE]\n\n');
+  try {
+    const errText = await response.text();
+    console.error('OpenRouter Error:', errText); // ← اطبع الخطأ في Terminal
+    const err = JSON.parse(errText);
+    errorMessage = err?.error?.message || errorMessage;
+  } catch {}
+
+  res.write(`data: ${JSON.stringify({ type: 'error', error: errorMessage })}\n\n`);
   return res.end();
 }
 
