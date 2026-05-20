@@ -294,7 +294,7 @@ ${knowledge}
         'X-Title': 'UoN Smart Academic Advisor'
       },
  body: JSON.stringify({
-model: 'openai/gpt-4o-mini',
+model: '@preset/uo-n',
    stream: true,
     messages: [
     { role: 'system', content: system },
