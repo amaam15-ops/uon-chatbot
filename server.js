@@ -15,10 +15,10 @@ app.use(express.static('public'));
 
 const openrouterKey = process.env.OPENROUTER_API_KEY || null;
 
-// ✅ Cache المعرفة
+//  Cache المعرفة
 let cachedKnowledge = '';
 
-// ✅ Cache الـ Boost مع انتهاء صلاحية 5 دقايق
+//  Cache الـ Boost مع انتهاء صلاحية 5 دقايق
 let cachedBoost = null;
 let lastBoostUpdate = 0;
 
@@ -50,7 +50,7 @@ function normalize(text) {
     .trim();
 }
 
-// 🔥 RL مع Cache - لا يقرأ الملف إلا كل 5 دقايق
+//  RL مع Cache - لا يقرأ الملف إلا كل 5 دقايق
 async function getKeywordBoost() {
   const now = Date.now();
   if (cachedBoost && (now - lastBoostUpdate) < 5 * 60 * 1000) {
@@ -99,7 +99,7 @@ function expandQuery(question) {
   return Array.from(terms);
 }
 
-// ✅ أصبحت sync - تستقبل boost من الخارج بدل ما تناديه بنفسها
+//  أصبحت sync - تستقبل boost من الخارج بدل ما تناديه بنفسها
 function getRelevantContext(question, text, boost = {}) {
   const chunks = text
     .split(/---|\n\s*\n/)
@@ -172,11 +172,11 @@ async function writeFeedback(entry) {
   const feedback = await readFeedback();
   feedback.push({ ...entry, createdAt: new Date().toISOString() });
   await fs.writeFile(feedbackFile, JSON.stringify(feedback, null, 2));
-  // ✅ أعد تعيين الـ cache بعد كل feedback جديد
+  //  أعد تعيين الـ cache بعد كل feedback جديد
   cachedBoost = null;
 }
 
-// ✅ Streaming endpoint
+//  Streaming endpoint
 app.post('/api/chat', async (req, res) => {
   try {
     const message = String(req.body.message || '').trim();
@@ -189,13 +189,13 @@ app.post('/api/chat', async (req, res) => {
     const lang = detectLang(message);
     const escalate = needsHuman(message);
 
-    // ✅ جلب المعرفة والـ boost بالتوازي
+    //  جلب المعرفة والـ boost بالتوازي
     const [allKnowledge, boost] = await Promise.all([
       loadKnowledge(),
       getKeywordBoost()
     ]);
 
-    // ✅ sync الآن - أسرع
+    //  sync الآن أسرع
     const knowledge = getRelevantContext(message, allKnowledge, boost);
 
     if (!openrouterKey) {
@@ -236,7 +236,7 @@ ${knowledge}
 - استخدم عنوانًا قصيرًا ومناسبًا في البداية.
 - استخدم • للقوائم.
 - استخدم سطرًا فارغًا بين المجموعات.
-- ممنوع استخدام ### أو ## أو --- أو Markdown.
+- ممنوع استخدام ## أو ## أو --- أو Markdown.
 
 أسلوب الرد:
 - واضح
@@ -253,7 +253,7 @@ ${knowledge}
         content: String(m.content || '').slice(0, 1000)
       }));
 
-    // ✅ Streaming - المستخدم يشوف الجواب فوراً
+    //  Streaming - المستخدم يشوف الجواب فوراً
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -293,7 +293,7 @@ if (!response.ok) {
   return res.end();
 }
 
-    // ✅ مرر الـ stream مباشرة للعميل
+    //  مرر الـ stream مباشرة للعميل
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 
