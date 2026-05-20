@@ -294,7 +294,7 @@ ${knowledge}
         'X-Title': 'UoN Smart Academic Advisor'
       },
  body: JSON.stringify({
-model: '@preset/uo-n',
+model: 'openai/gpt-4o-mini',
    stream: true,
     messages: [
     { role: 'system', content: system },
@@ -305,15 +305,20 @@ model: '@preset/uo-n',
     });
 
 if (!response.ok) {
-  let errorMessage = 'الخدمة مشغولة حاليًا، حاول مرة أخرى 🙏';
+  // ⚡ Fallback: نرجع المعرفة مباشرة بدل الخطأ
+  const fallbackAnswer = knowledge
+    ? `أهلاً بك! 🌟 إليك المعلومات المتوفرة من قاعدة بيانات الجامعة:\n\n${knowledge.slice(0, 1500)}\n\nإذا احتجت توضيح أكثر، تواصل مع مركز الإرشاد الأكاديمي: 📞 +968 25 446234`
+    : (lang === 'ar'
+        ? 'عذرًا، الخدمة مشغولة حاليًا. يمكنك التواصل مع مركز الإرشاد الأكاديمي: 📞 +968 25 446234'
+        : 'Sorry, service is busy. Please contact academic advising: 📞 +968 25 446234');
 
-  try {
-    const errText = await response.text();
-    const err = JSON.parse(errText);
-    errorMessage = err?.error?.message || errorMessage;
-  } catch {}
-
-  res.write(`data: ${JSON.stringify({ type: 'error', error: errorMessage })}\n\n`);
+  // أرسلها كـ streaming chunks
+  const chunks = fallbackAnswer.match(/.{1,50}/g) || [fallbackAnswer];
+  for (const chunk of chunks) {
+    res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+    await new Promise(r => setTimeout(r, 20));
+  }
+  res.write('data: [DONE]\n\n');
   return res.end();
 }
 
